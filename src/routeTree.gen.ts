@@ -9,38 +9,135 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignalerRouteImport } from './routes/signaler'
+import { Route as SecuriteRouteImport } from './routes/securite'
+import { Route as RecupererRouteImport } from './routes/recuperer'
+import { Route as CommentCaMarcheRouteImport } from './routes/comment-ca-marche'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DossierCodeRouteImport } from './routes/dossier.$code'
 
+const SignalerRoute = SignalerRouteImport.update({
+  id: '/signaler',
+  path: '/signaler',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecuriteRoute = SecuriteRouteImport.update({
+  id: '/securite',
+  path: '/securite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecupererRoute = RecupererRouteImport.update({
+  id: '/recuperer',
+  path: '/recuperer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommentCaMarcheRoute = CommentCaMarcheRouteImport.update({
+  id: '/comment-ca-marche',
+  path: '/comment-ca-marche',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DossierCodeRoute = DossierCodeRouteImport.update({
+  id: '/dossier/$code',
+  path: '/dossier/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/comment-ca-marche': typeof CommentCaMarcheRoute
+  '/recuperer': typeof RecupererRoute
+  '/securite': typeof SecuriteRoute
+  '/signaler': typeof SignalerRoute
+  '/dossier/$code': typeof DossierCodeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/comment-ca-marche': typeof CommentCaMarcheRoute
+  '/recuperer': typeof RecupererRoute
+  '/securite': typeof SecuriteRoute
+  '/signaler': typeof SignalerRoute
+  '/dossier/$code': typeof DossierCodeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/comment-ca-marche': typeof CommentCaMarcheRoute
+  '/recuperer': typeof RecupererRoute
+  '/securite': typeof SecuriteRoute
+  '/signaler': typeof SignalerRoute
+  '/dossier/$code': typeof DossierCodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/comment-ca-marche'
+    | '/recuperer'
+    | '/securite'
+    | '/signaler'
+    | '/dossier/$code'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/comment-ca-marche'
+    | '/recuperer'
+    | '/securite'
+    | '/signaler'
+    | '/dossier/$code'
+  id:
+    | '__root__'
+    | '/'
+    | '/comment-ca-marche'
+    | '/recuperer'
+    | '/securite'
+    | '/signaler'
+    | '/dossier/$code'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CommentCaMarcheRoute: typeof CommentCaMarcheRoute
+  RecupererRoute: typeof RecupererRoute
+  SecuriteRoute: typeof SecuriteRoute
+  SignalerRoute: typeof SignalerRoute
+  DossierCodeRoute: typeof DossierCodeRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signaler': {
+      id: '/signaler'
+      path: '/signaler'
+      fullPath: '/signaler'
+      preLoaderRoute: typeof SignalerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/securite': {
+      id: '/securite'
+      path: '/securite'
+      fullPath: '/securite'
+      preLoaderRoute: typeof SecuriteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recuperer': {
+      id: '/recuperer'
+      path: '/recuperer'
+      fullPath: '/recuperer'
+      preLoaderRoute: typeof RecupererRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/comment-ca-marche': {
+      id: '/comment-ca-marche'
+      path: '/comment-ca-marche'
+      fullPath: '/comment-ca-marche'
+      preLoaderRoute: typeof CommentCaMarcheRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,21 +145,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dossier/$code': {
+      id: '/dossier/$code'
+      path: '/dossier/$code'
+      fullPath: '/dossier/$code'
+      preLoaderRoute: typeof DossierCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CommentCaMarcheRoute: CommentCaMarcheRoute,
+  RecupererRoute: RecupererRoute,
+  SecuriteRoute: SecuriteRoute,
+  SignalerRoute: SignalerRoute,
+  DossierCodeRoute: DossierCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
