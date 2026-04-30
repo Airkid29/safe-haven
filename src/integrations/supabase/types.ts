@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          accepts_contact: boolean
+          country: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accepts_contact?: boolean
+          country?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accepts_contact?: boolean
+          country?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       report_evidences: {
         Row: {
           created_at: string
@@ -94,10 +124,13 @@ export type Database = {
           harassment_type: Database["public"]["Enums"]["harassment_type"] | null
           id: string
           incident_date: string | null
+          last_summarized_at: string | null
           location: string | null
+          message_count: number
           recovery_code: string
           status: Database["public"]["Enums"]["report_status"]
           structuration_score: number | null
+          summary_context: string | null
           updated_at: string
           user_id: string | null
         }
@@ -112,10 +145,13 @@ export type Database = {
             | null
           id?: string
           incident_date?: string | null
+          last_summarized_at?: string | null
           location?: string | null
+          message_count?: number
           recovery_code: string
           status?: Database["public"]["Enums"]["report_status"]
           structuration_score?: number | null
+          summary_context?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -130,24 +166,132 @@ export type Database = {
             | null
           id?: string
           incident_date?: string | null
+          last_summarized_at?: string | null
           location?: string | null
+          message_count?: number
           recovery_code?: string
           status?: Database["public"]["Enums"]["report_status"]
           structuration_score?: number | null
+          summary_context?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Relationships: []
       }
+      specialists: {
+        Row: {
+          city: string | null
+          country: string
+          created_at: string
+          description: string | null
+          email: string | null
+          id: string
+          is_24_7: boolean
+          is_free: boolean
+          is_published: boolean
+          is_verified: boolean
+          languages: string[] | null
+          name: string
+          phone: string | null
+          source_url: string | null
+          type: Database["public"]["Enums"]["specialist_type"]
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          city?: string | null
+          country: string
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          id?: string
+          is_24_7?: boolean
+          is_free?: boolean
+          is_published?: boolean
+          is_verified?: boolean
+          languages?: string[] | null
+          name: string
+          phone?: string | null
+          source_url?: string | null
+          type: Database["public"]["Enums"]["specialist_type"]
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          city?: string | null
+          country?: string
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          id?: string
+          is_24_7?: boolean
+          is_free?: boolean
+          is_published?: boolean
+          is_verified?: boolean
+          languages?: string[] | null
+          name?: string
+          phone?: string | null
+          source_url?: string | null
+          type?: Database["public"]["Enums"]["specialist_type"]
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      admin_stats: {
+        Row: {
+          harassment_type: Database["public"]["Enums"]["harassment_type"] | null
+          month: string | null
+          status: Database["public"]["Enums"]["report_status"] | null
+          total: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      get_admin_stats: {
+        Args: never
+        Returns: {
+          harassment_type: Database["public"]["Enums"]["harassment_type"]
+          month: string
+          status: Database["public"]["Enums"]["report_status"]
+          total: number
+        }[]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       action_level: "temoignage" | "accompagnement" | "dossier"
+      app_role: "admin" | "moderator" | "user"
       harassment_type:
         | "scolaire"
         | "professionnel"
@@ -158,6 +302,13 @@ export type Database = {
         | "familial"
         | "autre"
       report_status: "draft" | "submitted" | "in_progress" | "closed"
+      specialist_type:
+        | "helpline"
+        | "association"
+        | "authority"
+        | "legal"
+        | "health"
+        | "shelter"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -286,6 +437,7 @@ export const Constants = {
   public: {
     Enums: {
       action_level: ["temoignage", "accompagnement", "dossier"],
+      app_role: ["admin", "moderator", "user"],
       harassment_type: [
         "scolaire",
         "professionnel",
@@ -297,6 +449,14 @@ export const Constants = {
         "autre",
       ],
       report_status: ["draft", "submitted", "in_progress", "closed"],
+      specialist_type: [
+        "helpline",
+        "association",
+        "authority",
+        "legal",
+        "health",
+        "shelter",
+      ],
     },
   },
 } as const
