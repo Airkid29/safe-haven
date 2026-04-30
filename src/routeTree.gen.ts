@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TemoignagesRouteImport } from './routes/temoignages'
 import { Route as SignalerRouteImport } from './routes/signaler'
 import { Route as SecuriteRouteImport } from './routes/securite'
 import { Route as RecupererRouteImport } from './routes/recuperer'
@@ -20,6 +21,11 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DossierCodeRouteImport } from './routes/dossier.$code'
 
+const TemoignagesRoute = TemoignagesRouteImport.update({
+  id: '/temoignages',
+  path: '/temoignages',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignalerRoute = SignalerRouteImport.update({
   id: '/signaler',
   path: '/signaler',
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/recuperer': typeof RecupererRoute
   '/securite': typeof SecuriteRoute
   '/signaler': typeof SignalerRoute
+  '/temoignages': typeof TemoignagesRoute
   '/dossier/$code': typeof DossierCodeRoute
 }
 export interface FileRoutesByTo {
@@ -93,6 +100,7 @@ export interface FileRoutesByTo {
   '/recuperer': typeof RecupererRoute
   '/securite': typeof SecuriteRoute
   '/signaler': typeof SignalerRoute
+  '/temoignages': typeof TemoignagesRoute
   '/dossier/$code': typeof DossierCodeRoute
 }
 export interface FileRoutesById {
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/recuperer': typeof RecupererRoute
   '/securite': typeof SecuriteRoute
   '/signaler': typeof SignalerRoute
+  '/temoignages': typeof TemoignagesRoute
   '/dossier/$code': typeof DossierCodeRoute
 }
 export interface FileRouteTypes {
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/recuperer'
     | '/securite'
     | '/signaler'
+    | '/temoignages'
     | '/dossier/$code'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/recuperer'
     | '/securite'
     | '/signaler'
+    | '/temoignages'
     | '/dossier/$code'
   id:
     | '__root__'
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '/recuperer'
     | '/securite'
     | '/signaler'
+    | '/temoignages'
     | '/dossier/$code'
   fileRoutesById: FileRoutesById
 }
@@ -157,11 +169,19 @@ export interface RootRouteChildren {
   RecupererRoute: typeof RecupererRoute
   SecuriteRoute: typeof SecuriteRoute
   SignalerRoute: typeof SignalerRoute
+  TemoignagesRoute: typeof TemoignagesRoute
   DossierCodeRoute: typeof DossierCodeRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/temoignages': {
+      id: '/temoignages'
+      path: '/temoignages'
+      fullPath: '/temoignages'
+      preLoaderRoute: typeof TemoignagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signaler': {
       id: '/signaler'
       path: '/signaler'
@@ -245,8 +265,18 @@ const rootRouteChildren: RootRouteChildren = {
   RecupererRoute: RecupererRoute,
   SecuriteRoute: SecuriteRoute,
   SignalerRoute: SignalerRoute,
+  TemoignagesRoute: TemoignagesRoute,
   DossierCodeRoute: DossierCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

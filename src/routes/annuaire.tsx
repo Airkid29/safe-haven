@@ -4,6 +4,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Phone, Globe, MapPin, Clock, ShieldCheck, Search, Mail } from "lucide-react";
+import { toast } from "sonner";
 
 interface Specialist {
   id: string;
@@ -19,6 +20,93 @@ interface Specialist {
   is_24_7: boolean;
   is_verified: boolean;
 }
+
+const FALLBACK_TOGO_SPECIALISTS: Specialist[] = [
+  {
+    id: "fallback-gf2d",
+    name: "GF2D (Groupe de réflexion et d'action Femme, Démocratie et Développement)",
+    type: "helpline",
+    country: "TG",
+    city: "Lomé",
+    phone: "+228 93 96 89 89 / +228 22 61 49 25",
+    email: null,
+    website: null,
+    description: "WhatsApp disponible. Violences domestiques, sexuelles, soutien psychologique. Lun-Ven (8h-17h30). Gratuit et confidentiel.",
+    is_free: true,
+    is_24_7: false,
+    is_verified: true,
+  },
+  {
+    id: "fallback-rapaa",
+    name: "RAPAA (Recherche Action Prévention Accompagnement des Addictions)",
+    type: "helpline",
+    country: "TG",
+    city: null,
+    phone: "+228 90 70 50 82 / +228 99 40 71 13",
+    email: null,
+    website: null,
+    description: "Ecoute psychologique (trauma, addictions). Lun-Sam. Gratuit.",
+    is_free: true,
+    is_24_7: false,
+    is_verified: true,
+  },
+  {
+    id: "fallback-smvm",
+    name: "SMVM (Santé Meilleure Vie Meilleure)",
+    type: "health",
+    country: "TG",
+    city: "Lomé",
+    phone: "+228 90 47 44 95",
+    email: null,
+    website: null,
+    description: "Prise en charge des victimes de violences sexuelles.",
+    is_free: true,
+    is_24_7: false,
+    is_verified: true,
+  },
+  {
+    id: "fallback-asvitto",
+    name: "ASVITTO (Association des Victimes de la Torture au Togo)",
+    type: "association",
+    country: "TG",
+    city: null,
+    phone: "+228 99 67 81 30",
+    email: null,
+    website: null,
+    description: "Victimes de torture, violences institutionnelles, assistance juridique et accompagnement.",
+    is_free: true,
+    is_24_7: false,
+    is_verified: true,
+  },
+  {
+    id: "fallback-cacit",
+    name: "CACIT (Collectif des Associations Contre l'Impunité au Togo)",
+    type: "legal",
+    country: "TG",
+    city: null,
+    phone: "+228 22 21 70 29",
+    email: null,
+    website: null,
+    description: "Assistance juridique, judiciaire, psychologique. Pont important vers la justice.",
+    is_free: true,
+    is_24_7: false,
+    is_verified: true,
+  },
+  {
+    id: "fallback-police",
+    name: "Police nationale — Urgences",
+    type: "authority",
+    country: "TG",
+    city: null,
+    phone: "117",
+    email: null,
+    website: null,
+    description: "Numéro d'urgence national.",
+    is_free: true,
+    is_24_7: true,
+    is_verified: true,
+  },
+];
 
 const COUNTRIES: Record<string, string> = {
   TG: "🇹🇬 Togo", CI: "🇨🇮 Côte d'Ivoire", BJ: "🇧🇯 Bénin",
@@ -46,6 +134,7 @@ export const Route = createFileRoute("/annuaire")({
 
 function DirectoryPage() {
   const [items, setItems] = useState<Specialist[]>([]);
+  const [isFallback, setIsFallback] = useState(false);
   const [country, setCountry] = useState<string>("ALL");
   const [type, setType] = useState<string>("ALL");
   const [q, setQ] = useState("");
@@ -54,7 +143,22 @@ function DirectoryPage() {
     supabase.from("specialists").select("*")
       .eq("is_published", true)
       .order("country").order("type")
-      .then(({ data }) => setItems((data ?? []) as Specialist[]));
+      .then(({ data, error }) => {
+        if (error) {
+          setItems(FALLBACK_TOGO_SPECIALISTS);
+          setIsFallback(true);
+          toast.error("Annuaire indisponible temporairement. Affichage d'une version de secours.");
+          return;
+        }
+        const rows = (data ?? []) as Specialist[];
+        if (rows.length === 0) {
+          setItems(FALLBACK_TOGO_SPECIALISTS);
+          setIsFallback(true);
+          return;
+        }
+        setItems(rows);
+        setIsFallback(false);
+      });
   }, []);
 
   const filtered = useMemo(() => items.filter((s) =>
@@ -81,17 +185,22 @@ function DirectoryPage() {
         </section>
 
         <div className="container-narrow py-10">
+          {isFallback && (
+            <div className="mb-6 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-stone-deep">
+              L'annuaire principal est vide pour le moment. Une liste de structures essentielles (Togo) est affichee en attendant.
+            </div>
+          )}
           <div className="grid md:grid-cols-3 gap-3 mb-8">
             <div className="md:col-span-1 relative">
               <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher…"
                 className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-input bg-background text-stone-deep" />
             </div>
-            <select value={country} onChange={(e) => setCountry(e.target.value)} className="px-3 py-2.5 rounded-lg border border-input bg-background text-stone-deep">
+            <select title="Filtrer par pays" value={country} onChange={(e) => setCountry(e.target.value)} className="px-3 py-2.5 rounded-lg border border-input bg-background text-stone-deep">
               <option value="ALL">Tous les pays</option>
               {Object.entries(COUNTRIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
-            <select value={type} onChange={(e) => setType(e.target.value)} className="px-3 py-2.5 rounded-lg border border-input bg-background text-stone-deep">
+            <select title="Filtrer par type" value={type} onChange={(e) => setType(e.target.value)} className="px-3 py-2.5 rounded-lg border border-input bg-background text-stone-deep">
               <option value="ALL">Tous les types</option>
               {Object.entries(TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>

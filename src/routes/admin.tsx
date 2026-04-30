@@ -29,7 +29,7 @@ function AdminPage() {
   useEffect(() => {
     if (loading) return;
     if (!user) { navigate({ to: "/connexion" }); return; }
-    if (!isAdmin) { toast.error("Accès réservé aux administrateurs."); navigate({ to: "/" }); return; }
+    if (!isAdmin) { return; }
     reload();
   }, [user, isAdmin, loading, navigate]);
 
@@ -72,6 +72,39 @@ function AdminPage() {
   }
 
   if (loading) return <div className="min-h-screen grid place-items-center"><Loader2 className="size-6 animate-spin text-primary" /></div>;
+  if (user && !isAdmin) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <SiteHeader />
+        <main className="flex-1 bg-stone-warm/20">
+          <div className="container-prose py-14">
+            <div className="bg-card border border-border rounded-xl p-7">
+              <h1 className="font-serif text-3xl font-bold text-stone-deep">Accès administrateur requis</h1>
+              <p className="text-muted-foreground mt-3 leading-relaxed">
+                Votre compte est bien connecté, mais n'a pas encore le rôle <code>admin</code>.
+                Demandez à un administrateur existant d'activer votre accès.
+              </p>
+              <div className="mt-6">
+                <div className="text-sm font-semibold text-stone-deep">Commande SQL à exécuter dans Supabase SQL Editor :</div>
+                <pre className="mt-2 rounded-lg border border-border bg-background p-4 text-xs overflow-x-auto text-stone-deep">
+{`insert into public.user_roles (user_id, role)
+values ('VOTRE_USER_ID', 'admin')
+on conflict (user_id, role) do nothing;`}
+                </pre>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Vous trouverez votre user id dans Supabase &gt; Authentication &gt; Users.
+                </p>
+              </div>
+              <div className="mt-6">
+                <Link to="/" className="text-sm text-primary hover:underline">Retour à l'accueil</Link>
+              </div>
+            </div>
+          </div>
+        </main>
+        <SiteFooter />
+      </div>
+    );
+  }
 
   const totalReports = stats.reduce((acc, s) => acc + s.total, 0);
 
@@ -135,8 +168,8 @@ function AdminPage() {
                   <button onClick={() => togglePublish(s)} className={`text-xs px-2 py-1 rounded ${s.is_published ? "bg-sage/20 text-sage" : "bg-stone-warm text-muted-foreground"}`}>
                     {s.is_published ? "Publié" : "Caché"}
                   </button>
-                  <button onClick={() => setEditing(s)} className="size-8 grid place-items-center rounded border border-border hover:bg-stone-warm"><Pencil className="size-3.5" /></button>
-                  <button onClick={() => remove(s.id)} className="size-8 grid place-items-center rounded border border-destructive/30 text-destructive hover:bg-destructive/5"><Trash2 className="size-3.5" /></button>
+                  <button title="Modifier la structure" onClick={() => setEditing(s)} className="size-8 grid place-items-center rounded border border-border hover:bg-stone-warm"><Pencil className="size-3.5" /></button>
+                  <button title="Supprimer la structure" onClick={() => remove(s.id)} className="size-8 grid place-items-center rounded border border-destructive/30 text-destructive hover:bg-destructive/5"><Trash2 className="size-3.5" /></button>
                 </div>
               ))}
             </div>
@@ -179,8 +212,8 @@ function EditDialog({ initial, onClose, onSave }: { initial: Partial<Specialist>
           <Input label="Email" value={s.email ?? ""} onChange={(v) => set("email", v)} />
           <Input label="Site web" value={s.website ?? ""} onChange={(v) => set("website", v)} full />
           <div className="col-span-2">
-            <label className="text-xs font-medium text-stone-deep">Description</label>
-            <textarea value={s.description ?? ""} onChange={(e) => set("description", e.target.value)} rows={3}
+            <label htmlFor="specialist-description" className="text-xs font-medium text-stone-deep">Description</label>
+            <textarea id="specialist-description" value={s.description ?? ""} onChange={(e) => set("description", e.target.value)} rows={3}
               className="mt-1 w-full p-2 rounded border border-input bg-background" />
           </div>
           <Check label="Publié" v={!!s.is_published} on={(v) => set("is_published", v)} />
@@ -198,18 +231,20 @@ function EditDialog({ initial, onClose, onSave }: { initial: Partial<Specialist>
 }
 
 function Input({ label, value, onChange, full }: { label: string; value: string; onChange: (v: string) => void; full?: boolean }) {
+  const inputId = `field-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   return (
     <div className={full ? "col-span-2" : ""}>
-      <label className="text-xs font-medium text-stone-deep">{label}</label>
-      <input value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full p-2 rounded border border-input bg-background" />
+      <label htmlFor={inputId} className="text-xs font-medium text-stone-deep">{label}</label>
+      <input id={inputId} value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full p-2 rounded border border-input bg-background" />
     </div>
   );
 }
 function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
+  const selectId = `field-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   return (
     <div>
-      <label className="text-xs font-medium text-stone-deep">{label}</label>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full p-2 rounded border border-input bg-background">
+      <label htmlFor={selectId} className="text-xs font-medium text-stone-deep">{label}</label>
+      <select id={selectId} value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full p-2 rounded border border-input bg-background">
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
     </div>

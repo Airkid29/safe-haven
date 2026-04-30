@@ -3,7 +3,6 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { toast } from "sonner";
 import { Loader2, ShieldCheck } from "lucide-react";
 
@@ -43,8 +42,18 @@ function AuthPage() {
   }
 
   async function google() {
-    const r = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}/mes-dossiers` });
-    if (r.error) toast.error(r.error.message ?? "Erreur Google");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/mes-dossiers`,
+        queryParams: {
+          prompt: "select_account",
+        },
+      },
+    });
+    if (error) {
+      toast.error(error.message ?? "Erreur Google");
+    }
   }
 
   return (
@@ -75,13 +84,13 @@ function AuthPage() {
 
             <form onSubmit={submit} className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-stone-deep">Email</label>
-                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+                <label htmlFor="auth-email" className="text-sm font-medium text-stone-deep">Email</label>
+                <input id="auth-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
                   className="mt-1.5 w-full p-3 rounded-lg border border-input bg-background text-stone-deep" />
               </div>
               <div>
-                <label className="text-sm font-medium text-stone-deep">Mot de passe</label>
-                <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)}
+                <label htmlFor="auth-password" className="text-sm font-medium text-stone-deep">Mot de passe</label>
+                <input id="auth-password" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)}
                   className="mt-1.5 w-full p-3 rounded-lg border border-input bg-background text-stone-deep" />
                 {mode === "signup" && <p className="text-xs text-muted-foreground mt-1">8 caractères minimum.</p>}
               </div>

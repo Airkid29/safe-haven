@@ -23,6 +23,7 @@ export function SiteHeader() {
         </Link>
         <nav className="hidden lg:flex items-center gap-7 text-sm font-medium text-stone-deep">
           <Link to="/comment-ca-marche" className="hover:text-primary transition-colors">Comment ça marche</Link>
+          <Link to="/temoignages" className="hover:text-primary transition-colors">Témoignages</Link>
           <Link to="/annuaire" className="hover:text-primary transition-colors">Annuaire</Link>
           <Link to="/securite" className="hover:text-primary transition-colors">Sécurité</Link>
           <Link to="/recuperer" className="hover:text-primary transition-colors">Mon code</Link>
