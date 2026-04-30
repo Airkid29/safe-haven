@@ -8,20 +8,50 @@ async function call<T = unknown>(fn: string, body: unknown): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-  const res = await fetch(`${FUNCTIONS_URL}/${fn}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  if (!res.ok || data?.ok === false) {
-    throw new Error(data?.error ?? `Erreur ${res.status}`);
+  let res: Response;
+  try {
+    res = await fetch(`${FUNCTIONS_URL}/${fn}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error("Impossible de joindre le service. Vérifiez votre connexion.");
   }
-  return data;
+
+  let data: unknown = null;
+  try {
+    data = await res.json();
+  } catch {
+    // Certaines erreurs de gateway/route renvoient du texte/HTML.
+    data = null;
+  }
+
+  if (!res.ok) {
+    const msg =
+      (typeof data === "object" && data && "error" in data && typeof (data as { error?: unknown }).error === "string"
+        ? (data as { error: string }).error
+        : null) ??
+      (res.status === 404
+        ? `Service "${fn}" introuvable. Vérifiez le déploiement des Edge Functions Supabase.`
+        : null) ??
+      `Erreur ${res.status}`;
+    throw new Error(msg);
+  }
+
+  if (typeof data === "object" && data && "ok" in data && (data as { ok?: boolean }).ok === false) {
+    const msg =
+      "error" in data && typeof (data as { error?: unknown }).error === "string"
+        ? (data as { error: string }).error
+        : "Une erreur est survenue.";
+    throw new Error(msg);
+  }
+
+  return data as T;
 }
 
 export type HarassmentType =

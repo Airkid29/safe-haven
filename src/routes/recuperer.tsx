@@ -23,7 +23,7 @@ function RecuperPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const c = code.trim().toUpperCase();
+    const c = code.trim().toUpperCase().replace(/\s+/g, "");
     if (!c) return;
     setLoading(true);
     try {

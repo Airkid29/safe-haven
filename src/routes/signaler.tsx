@@ -92,8 +92,12 @@ function SignalerPage() {
               <div className="mt-9 flex flex-wrap gap-3">
                 <PrimaryBtn
                   onClick={async () => {
-                    await ensureReport();
-                    setStep("type");
+                    try {
+                      await ensureReport();
+                      setStep("type");
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "Impossible de démarrer le signalement.");
+                    }
                   }}
                   loading={creating}
                 >
