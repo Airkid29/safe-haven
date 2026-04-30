@@ -45,10 +45,11 @@ function AdminPage() {
   async function save(s: Partial<Specialist>) {
     try {
       if (s.id) {
-        const { error } = await supabase.from("specialists").update(s).eq("id", s.id);
+        const { id, ...rest } = s;
+        const { error } = await supabase.from("specialists").update(rest as never).eq("id", id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("specialists").insert(s as Specialist);
+        const { error } = await supabase.from("specialists").insert([s as never]);
         if (error) throw error;
       }
       toast.success("Enregistré");
