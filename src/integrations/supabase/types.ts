@@ -261,15 +261,7 @@ export type Database = {
       }
     }
     Views: {
-      admin_stats: {
-        Row: {
-          harassment_type: Database["public"]["Enums"]["harassment_type"] | null
-          month: string | null
-          status: Database["public"]["Enums"]["report_status"] | null
-          total: number | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       get_admin_stats: {
