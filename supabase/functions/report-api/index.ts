@@ -9,7 +9,6 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// Génère un code humainement lisible : XXXX-XXXX-XXXX (sans caractères ambigus)
 function generateRecoveryCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const buf = new Uint8Array(12);
@@ -29,6 +28,19 @@ function computeStructurationScore(report: Record<string, unknown>): number {
   return Math.min(100, score);
 }
 
+async function getUserIdFromAuth(req: Request, supabase: ReturnType<typeof createClient>): Promise<string | null> {
+  const authz = req.headers.get("Authorization") ?? "";
+  const token = authz.replace(/^Bearer\s+/i, "");
+  if (!token) return null;
+  // Le token publishable n'a pas d'utilisateur ; getUser distinguera.
+  try {
+    const { data } = await supabase.auth.getUser(token);
+    return data.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -39,20 +51,19 @@ Deno.serve(async (req) => {
     );
     const body = await req.json();
     const { action } = body;
+    const userId = await getUserIdFromAuth(req, supabase);
 
-    // --- Créer un nouveau signalement ---
     if (action === "create") {
       const recovery_code = generateRecoveryCode();
       const { data, error } = await supabase
         .from("reports")
-        .insert({ recovery_code, status: "draft" })
+        .insert({ recovery_code, status: "draft", user_id: userId })
         .select("id, recovery_code")
         .single();
       if (error) throw error;
       return Response.json({ ok: true, report: data }, { headers: corsHeaders });
     }
 
-    // --- Mettre à jour les champs du signalement ---
     if (action === "update") {
       const { recovery_code, fields } = body;
       if (!recovery_code) return Response.json({ ok: false, error: "code manquant" }, { status: 400, headers: corsHeaders });
@@ -64,7 +75,6 @@ Deno.serve(async (req) => {
       const update: Record<string, unknown> = {};
       for (const k of allowed) if (k in fields) update[k] = fields[k];
 
-      // recompute score
       const { data: existing } = await supabase
         .from("reports").select("*").eq("recovery_code", recovery_code).maybeSingle();
       if (!existing) return Response.json({ ok: false, error: "introuvable" }, { status: 404, headers: corsHeaders });
@@ -78,7 +88,6 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, report: data }, { headers: corsHeaders });
     }
 
-    // --- Récupérer un signalement par code ---
     if (action === "get") {
       const { recovery_code } = body;
       if (!recovery_code) return Response.json({ ok: false, error: "code manquant" }, { status: 400, headers: corsHeaders });
@@ -95,7 +104,6 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, report, messages: messages ?? [], evidences: evidences ?? [] }, { headers: corsHeaders });
     }
 
-    // --- Soumettre définitivement ---
     if (action === "submit") {
       const { recovery_code } = body;
       const { data, error } = await supabase
@@ -104,12 +112,35 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, report: data }, { headers: corsHeaders });
     }
 
-    // --- Supprimer (droit à l'oubli) ---
     if (action === "delete") {
       const { recovery_code } = body;
       const { error } = await supabase.from("reports").delete().eq("recovery_code", recovery_code);
       if (error) throw error;
       return Response.json({ ok: true }, { headers: corsHeaders });
+    }
+
+    // Lier un dossier (par code) au compte courant
+    if (action === "claim") {
+      const { recovery_code } = body;
+      if (!userId) return Response.json({ ok: false, error: "Vous devez être connecté." }, { status: 401, headers: corsHeaders });
+      if (!recovery_code) return Response.json({ ok: false, error: "code manquant" }, { status: 400, headers: corsHeaders });
+      const { data, error } = await supabase
+        .from("reports").update({ user_id: userId })
+        .eq("recovery_code", recovery_code).select().single();
+      if (error) throw error;
+      return Response.json({ ok: true, report: data }, { headers: corsHeaders });
+    }
+
+    // Lister mes dossiers (utilisateur connecté)
+    if (action === "list_mine") {
+      if (!userId) return Response.json({ ok: false, error: "Vous devez être connecté." }, { status: 401, headers: corsHeaders });
+      const { data, error } = await supabase
+        .from("reports")
+        .select("recovery_code, harassment_type, status, created_at, updated_at, structuration_score")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return Response.json({ ok: true, reports: data ?? [] }, { headers: corsHeaders });
     }
 
     return Response.json({ ok: false, error: "Action inconnue" }, { status: 400, headers: corsHeaders });
