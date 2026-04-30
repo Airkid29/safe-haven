@@ -4,12 +4,16 @@ import { supabase } from "@/integrations/supabase/client";
 const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
 async function call<T = unknown>(fn: string, body: unknown): Promise<T> {
+  // Si l'utilisateur est connecté, on envoie son JWT pour que l'edge function l'identifie.
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
   const res = await fetch(`${FUNCTIONS_URL}/${fn}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(body),
   });
@@ -38,6 +42,8 @@ export interface Report {
   status: "draft" | "submitted" | "in_progress" | "closed";
   structuration_score: number;
   ai_summary: string | null;
+  summary_context?: string | null;
+  message_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -47,6 +53,15 @@ export interface Message {
   role: "user" | "assistant" | "system";
   content: string;
   created_at: string;
+}
+
+export interface MyReportListItem {
+  recovery_code: string;
+  harassment_type: HarassmentType | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  structuration_score: number;
 }
 
 export const reportApi = {
@@ -59,6 +74,10 @@ export const reportApi = {
     call<{ ok: true; report: Report }>("report-api", { action: "submit", recovery_code }),
   remove: (recovery_code: string) =>
     call<{ ok: true }>("report-api", { action: "delete", recovery_code }),
+  claim: (recovery_code: string) =>
+    call<{ ok: true; report: Report }>("report-api", { action: "claim", recovery_code }),
+  listMine: () =>
+    call<{ ok: true; reports: MyReportListItem[] }>("report-api", { action: "list_mine" }),
 };
 
 export const aiApi = {

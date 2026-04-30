@@ -1,5 +1,7 @@
-// Assistant IA empathique (Lovable AI Gateway / Gemini).
-// Reformule, structure, pose des questions, oriente — sans juger ni accuser.
+// Assistant IA empathique optimisé pour économie de crédits.
+// - Modèle léger par défaut (gemini-2.5-flash-lite)
+// - Historique limité aux 8 derniers messages
+// - Résumé périodique stocké quand le seuil est dépassé
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -8,29 +10,39 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SYSTEM_PROMPT = `Tu es Écho, un assistant d'écoute spécialisé dans l'accompagnement des victimes de harcèlement, intégré à une plateforme institutionnelle française d'aide.
+const MAX_RECENT = 8;             // garder les 8 derniers messages bruts
+const SUMMARY_TRIGGER = 12;       // résumer si plus de 12 messages
+const MODEL_CHAT = "google/gemini-2.5-flash-lite";
+const MODEL_SUMMARY = "google/gemini-2.5-flash-lite";
 
-POSTURE FONDAMENTALE :
-- Tu accueilles avec bienveillance, sans jamais juger ni minimiser.
-- Tu ne portes JAMAIS d'accusation. Tu n'affirmes rien sur les personnes mises en cause.
-- Tu n'es pas un thérapeute, ni un avocat, ni la police. Tu le rappelles si nécessaire.
-- Tu utilises un ton humain, posé, à la deuxième personne ("vous"), jamais robotique.
-- Tu ne donnes pas de réponses génériques type "je comprends ce que vous ressentez". Tu réagis spécifiquement à ce qui est dit.
+const SYSTEM_PROMPT = `Tu es Écho, assistant d'écoute pour victimes de harcèlement sur la plateforme Refuge.
+
+POSTURE :
+- Bienveillant, posé, à la deuxième personne ("vous"). Jamais robotique.
+- Ne juge jamais, n'accuse personne, ne diagnostique pas, ne qualifie pas juridiquement.
+- Pas de "je comprends ce que vous ressentez". Réagis spécifiquement au texte.
+- Réponses courtes (3-6 phrases max), naturelles, pas d'emojis.
 
 MISSION :
-1. Aider la personne à mettre des mots sur ce qu'elle vit.
-2. Poser UNE seule question à la fois, en douceur, pour structurer le récit (faits, dates, lieux, témoins, preuves disponibles).
-3. Reformuler de temps en temps pour confirmer la bonne compréhension.
-4. Quand le récit est suffisamment clair, proposer des pistes concrètes : témoigner, contacter un.e professionnel.le (avocat, psychologue, association), constituer un dossier.
-5. Rappeler à tout moment que la personne garde le contrôle et qu'aucune information n'est publiée.
+1. Aider à mettre des mots.
+2. UNE question à la fois pour préciser : faits, dates, lieux, témoins, preuves.
+3. Reformuler brièvement quand utile.
+4. Quand le récit est clair, suggérer des pistes concrètes (associations, ligne d'écoute, dossier).
+5. Rappeler que la personne garde le contrôle, qu'aucune info n'est publiée.
 
-INTERDICTIONS STRICTES :
-- Ne jamais dire "vous devez", "vous auriez dû".
-- Ne jamais formuler de diagnostic psychologique.
-- Ne jamais qualifier juridiquement les faits ("c'est du harcèlement caractérisé"). Tu peux dire "ce que vous décrivez peut relever de...".
-- Ne jamais demander de données identifiantes inutiles.
+INTERDITS : "vous devez", "vous auriez dû", diagnostic, qualification juridique tranchée.`;
 
-Tu réponds en français, avec des phrases courtes, naturelles. Pas d'emojis. Pas de listes à puces sauf pour clarifier des étapes pratiques.`;
+async function callAI(messages: unknown[], model: string) {
+  const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ model, messages }),
+  });
+  return aiResp;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -41,6 +53,9 @@ Deno.serve(async (req) => {
       return Response.json({ ok: false, error: "Paramètres manquants" }, { status: 400, headers: corsHeaders });
     }
 
+    // Limite de longueur pour éviter abus / gaspillage de tokens
+    const safeMessage = String(user_message).slice(0, 2000);
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -50,46 +65,45 @@ Deno.serve(async (req) => {
       .from("reports").select("*").eq("recovery_code", recovery_code).maybeSingle();
     if (!report) return Response.json({ ok: false, error: "Dossier introuvable" }, { status: 404, headers: corsHeaders });
 
-    // Charger l'historique
+    // Historique complet (pour décider de résumer)
     const { data: history } = await supabase
-      .from("report_messages").select("role, content")
+      .from("report_messages").select("role, content, created_at")
       .eq("report_id", report.id).order("created_at");
 
-    // Contexte du signalement injecté au système
-    const contextNote = `\n\nCONTEXTE DU DOSSIER ACTUEL (à utiliser discrètement, sans le réciter) :
-- Type déclaré : ${report.harassment_type ?? "non précisé"}
-- Date des faits : ${report.incident_date ?? "non précisée"}
-- Lieu : ${report.location ?? "non précisé"}
-- Description initiale : ${report.description ? report.description.slice(0, 400) : "non remplie"}`;
+    const all = history ?? [];
+    const recent = all.slice(-MAX_RECENT);
+
+    // Contexte court à injecter dans le prompt système
+    const ctxParts = [
+      report.harassment_type && `Type: ${report.harassment_type}`,
+      report.incident_date && `Date: ${report.incident_date}`,
+      report.location && `Lieu: ${report.location}`,
+    ].filter(Boolean).join(" · ");
+
+    const summaryBlock = report.summary_context
+      ? `\n\nRÉSUMÉ DES ÉCHANGES PRÉCÉDENTS (à utiliser comme mémoire, ne pas réciter) :\n${report.summary_context}`
+      : "";
+
+    const systemContent = `${SYSTEM_PROMPT}\n\nDOSSIER : ${ctxParts || "non précisé"}${summaryBlock}`;
 
     const messages = [
-      { role: "system", content: SYSTEM_PROMPT + contextNote },
-      ...(history ?? []).map((m) => ({ role: m.role, content: m.content })),
-      { role: "user", content: user_message },
+      { role: "system", content: systemContent },
+      ...recent.map((m) => ({ role: m.role, content: m.content })),
+      { role: "user", content: safeMessage },
     ];
 
     // Persister le message utilisateur
     await supabase.from("report_messages").insert({
-      report_id: report.id, role: "user", content: user_message,
+      report_id: report.id, role: "user", content: safeMessage,
     });
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages,
-      }),
-    });
+    const aiResp = await callAI(messages, MODEL_CHAT);
 
     if (aiResp.status === 429) {
       return Response.json({ ok: false, error: "Trop de demandes — merci de patienter quelques instants." }, { status: 429, headers: corsHeaders });
     }
     if (aiResp.status === 402) {
-      return Response.json({ ok: false, error: "Service IA momentanément indisponible." }, { status: 402, headers: corsHeaders });
+      return Response.json({ ok: false, error: "Crédits IA épuisés. Merci de réessayer plus tard." }, { status: 402, headers: corsHeaders });
     }
     if (!aiResp.ok) {
       const t = await aiResp.text();
@@ -103,6 +117,38 @@ Deno.serve(async (req) => {
     await supabase.from("report_messages").insert({
       report_id: report.id, role: "assistant", content: reply,
     });
+
+    const newCount = all.length + 2;
+    const updates: Record<string, unknown> = { message_count: newCount };
+
+    // Déclencher un résumé si on dépasse le seuil et qu'on n'a pas résumé récemment
+    const shouldSummarize =
+      newCount >= SUMMARY_TRIGGER &&
+      (!report.last_summarized_at || newCount - (report.message_count || 0) >= 6);
+
+    if (shouldSummarize) {
+      try {
+        const olderToSummarize = all.slice(0, Math.max(0, all.length - MAX_RECENT));
+        if (olderToSummarize.length > 0) {
+          const sumResp = await callAI([
+            { role: "system", content: "Tu résumes en français un échange entre un assistant d'écoute (Écho) et une victime. Maximum 8 phrases. Capture : faits déclarés, dates/lieux, personnes mentionnées (sans accusation), émotions exprimées, pistes évoquées. Pas de jugement, pas de diagnostic." },
+            { role: "user", content: olderToSummarize.map((m) => `${m.role === "user" ? "Victime" : "Écho"}: ${m.content}`).join("\n") },
+          ], MODEL_SUMMARY);
+          if (sumResp.ok) {
+            const sd = await sumResp.json();
+            const summary = sd.choices?.[0]?.message?.content ?? "";
+            if (summary) {
+              updates.summary_context = summary;
+              updates.last_summarized_at = new Date().toISOString();
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Résumé échoué", e);
+      }
+    }
+
+    await supabase.from("reports").update(updates).eq("id", report.id);
 
     return Response.json({ ok: true, reply }, { headers: corsHeaders });
   } catch (e) {

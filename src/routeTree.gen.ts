@@ -12,7 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignalerRouteImport } from './routes/signaler'
 import { Route as SecuriteRouteImport } from './routes/securite'
 import { Route as RecupererRouteImport } from './routes/recuperer'
+import { Route as MesDossiersRouteImport } from './routes/mes-dossiers'
+import { Route as ConnexionRouteImport } from './routes/connexion'
 import { Route as CommentCaMarcheRouteImport } from './routes/comment-ca-marche'
+import { Route as AnnuaireRouteImport } from './routes/annuaire'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DossierCodeRouteImport } from './routes/dossier.$code'
 
@@ -31,9 +35,29 @@ const RecupererRoute = RecupererRouteImport.update({
   path: '/recuperer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MesDossiersRoute = MesDossiersRouteImport.update({
+  id: '/mes-dossiers',
+  path: '/mes-dossiers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConnexionRoute = ConnexionRouteImport.update({
+  id: '/connexion',
+  path: '/connexion',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CommentCaMarcheRoute = CommentCaMarcheRouteImport.update({
   id: '/comment-ca-marche',
   path: '/comment-ca-marche',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnnuaireRoute = AnnuaireRouteImport.update({
+  id: '/annuaire',
+  path: '/annuaire',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -49,7 +73,11 @@ const DossierCodeRoute = DossierCodeRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/annuaire': typeof AnnuaireRoute
   '/comment-ca-marche': typeof CommentCaMarcheRoute
+  '/connexion': typeof ConnexionRoute
+  '/mes-dossiers': typeof MesDossiersRoute
   '/recuperer': typeof RecupererRoute
   '/securite': typeof SecuriteRoute
   '/signaler': typeof SignalerRoute
@@ -57,7 +85,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/annuaire': typeof AnnuaireRoute
   '/comment-ca-marche': typeof CommentCaMarcheRoute
+  '/connexion': typeof ConnexionRoute
+  '/mes-dossiers': typeof MesDossiersRoute
   '/recuperer': typeof RecupererRoute
   '/securite': typeof SecuriteRoute
   '/signaler': typeof SignalerRoute
@@ -66,7 +98,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/annuaire': typeof AnnuaireRoute
   '/comment-ca-marche': typeof CommentCaMarcheRoute
+  '/connexion': typeof ConnexionRoute
+  '/mes-dossiers': typeof MesDossiersRoute
   '/recuperer': typeof RecupererRoute
   '/securite': typeof SecuriteRoute
   '/signaler': typeof SignalerRoute
@@ -76,7 +112,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
+    | '/annuaire'
     | '/comment-ca-marche'
+    | '/connexion'
+    | '/mes-dossiers'
     | '/recuperer'
     | '/securite'
     | '/signaler'
@@ -84,7 +124,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
+    | '/annuaire'
     | '/comment-ca-marche'
+    | '/connexion'
+    | '/mes-dossiers'
     | '/recuperer'
     | '/securite'
     | '/signaler'
@@ -92,7 +136,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
+    | '/annuaire'
     | '/comment-ca-marche'
+    | '/connexion'
+    | '/mes-dossiers'
     | '/recuperer'
     | '/securite'
     | '/signaler'
@@ -101,7 +149,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
+  AnnuaireRoute: typeof AnnuaireRoute
   CommentCaMarcheRoute: typeof CommentCaMarcheRoute
+  ConnexionRoute: typeof ConnexionRoute
+  MesDossiersRoute: typeof MesDossiersRoute
   RecupererRoute: typeof RecupererRoute
   SecuriteRoute: typeof SecuriteRoute
   SignalerRoute: typeof SignalerRoute
@@ -131,11 +183,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecupererRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mes-dossiers': {
+      id: '/mes-dossiers'
+      path: '/mes-dossiers'
+      fullPath: '/mes-dossiers'
+      preLoaderRoute: typeof MesDossiersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/connexion': {
+      id: '/connexion'
+      path: '/connexion'
+      fullPath: '/connexion'
+      preLoaderRoute: typeof ConnexionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/comment-ca-marche': {
       id: '/comment-ca-marche'
       path: '/comment-ca-marche'
       fullPath: '/comment-ca-marche'
       preLoaderRoute: typeof CommentCaMarcheRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/annuaire': {
+      id: '/annuaire'
+      path: '/annuaire'
+      fullPath: '/annuaire'
+      preLoaderRoute: typeof AnnuaireRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -157,7 +237,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
+  AnnuaireRoute: AnnuaireRoute,
   CommentCaMarcheRoute: CommentCaMarcheRoute,
+  ConnexionRoute: ConnexionRoute,
+  MesDossiersRoute: MesDossiersRoute,
   RecupererRoute: RecupererRoute,
   SecuriteRoute: SecuriteRoute,
   SignalerRoute: SignalerRoute,
@@ -166,12 +250,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
