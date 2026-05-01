@@ -12,8 +12,7 @@ const corsHeaders = {
 
 const MAX_RECENT = 8;             // garder les 8 derniers messages bruts
 const SUMMARY_TRIGGER = 12;       // résumer si plus de 12 messages
-const MODEL_CHAT = "google/gemini-2.5-flash-lite";
-const MODEL_SUMMARY = "google/gemini-2.5-flash-lite";
+const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY");
 
 const SYSTEM_PROMPT = `Tu es Écho, assistant d'écoute pour victimes de harcèlement sur la plateforme Refuge.
 
@@ -32,15 +31,35 @@ MISSION :
 
 INTERDITS : "vous devez", "vous auriez dû", diagnostic, qualification juridique tranchée.`;
 
-async function callAI(messages: unknown[], model: string) {
-  const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ model, messages }),
-  });
+async function callAI(messages: unknown[]) {
+  // Convertir au format Gemini : role "user"/"model" + pas de system role séparé
+  const geminiMessages = messages
+    .filter((m: any) => m.role !== "system")
+    .map((m: any) => ({
+      role: m.role === "user" ? "user" : "model",
+      parts: [{ text: m.content }],
+    }));
+
+  // Injecter le system prompt en tant que premier message si présent
+  const systemMsg = (messages as any[]).find((m) => m.role === "system");
+  if (systemMsg && geminiMessages.length > 0 && geminiMessages[0].role === "user") {
+    geminiMessages[0].parts.unshift({ text: `${systemMsg.content}\n\n---\n\n` });
+  }
+
+  const aiResp = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: geminiMessages,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 500,
+        },
+      }),
+    }
+  );
   return aiResp;
 }
 
@@ -97,22 +116,26 @@ Deno.serve(async (req) => {
       report_id: report.id, role: "user", content: safeMessage,
     });
 
-    const aiResp = await callAI(messages, MODEL_CHAT);
+    const aiResp = await callAI(messages);
 
     if (aiResp.status === 429) {
       return Response.json({ ok: false, error: "Trop de demandes — merci de patienter quelques instants." }, { status: 429, headers: corsHeaders });
     }
-    if (aiResp.status === 402) {
-      return Response.json({ ok: false, error: "Crédits IA épuisés. Merci de réessayer plus tard." }, { status: 402, headers: corsHeaders });
+    if (aiResp.status === 402 || aiResp.status === 403) {
+      return Response.json({ ok: false, error: "Erreur API Gemini. Vérifiez votre clé API." }, { status: 400, headers: corsHeaders });
     }
     if (!aiResp.ok) {
       const t = await aiResp.text();
-      console.error("AI gateway error", aiResp.status, t);
-      throw new Error("Erreur IA");
+      console.error("Gemini error", aiResp.status, t);
+      throw new Error(`Gemini error: ${aiResp.status}`);
     }
 
     const aiData = await aiResp.json();
-    const reply: string = aiData.choices?.[0]?.message?.content ?? "";
+    const reply: string = aiData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+
+    if (!reply) {
+      throw new Error("Aucune réponse de Gemini");
+    }
 
     await supabase.from("report_messages").insert({
       report_id: report.id, role: "assistant", content: reply,
@@ -133,10 +156,10 @@ Deno.serve(async (req) => {
           const sumResp = await callAI([
             { role: "system", content: "Tu résumes en français un échange entre un assistant d'écoute (Écho) et une victime. Maximum 8 phrases. Capture : faits déclarés, dates/lieux, personnes mentionnées (sans accusation), émotions exprimées, pistes évoquées. Pas de jugement, pas de diagnostic." },
             { role: "user", content: olderToSummarize.map((m) => `${m.role === "user" ? "Victime" : "Écho"}: ${m.content}`).join("\n") },
-          ], MODEL_SUMMARY);
+          ]);
           if (sumResp.ok) {
             const sd = await sumResp.json();
-            const summary = sd.choices?.[0]?.message?.content ?? "";
+            const summary = sd.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
             if (summary) {
               updates.summary_context = summary;
               updates.last_summarized_at = new Date().toISOString();
