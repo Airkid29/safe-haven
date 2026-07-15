@@ -11,7 +11,7 @@ L'application permet notamment de :
 
 ## Stack technique
 
-- `React 19` + `TypeScript`
+- `React 19` + `TypeScript` .
 - `TanStack Router` + `TanStack Start`
 - `Vite`
 - `Tailwind CSS 4`
